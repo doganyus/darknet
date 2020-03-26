@@ -845,6 +845,53 @@ void free_detections(detection *dets, int n)
 // ]
 //},
 
+char *detection_to_json_with_image_dim(detection *dets, int nboxes, int classes, char **names, long long int frame_id, char *filename, long img_width, long img_height)
+{
+    const float thresh = 0.005; // function get_network_boxes() has already filtred dets by actual threshold
+
+    char *send_buf = (char *)calloc(1024, sizeof(char));
+    if (!send_buf) return 0;
+    if (filename) {
+        sprintf(send_buf, "{\n \"frame_id\":%lld, \n \"img_width\":%d, \"img_height\":%d, \n \"filename\":\"%s\", \n \"objects\": [ \n", frame_id, img_width, img_height, filename);
+    }
+    else {
+        sprintf(send_buf, "{\n \"frame_id\":%lld, \n \"img_width\":%d, \"img_height\":%d, \n \"objects\": [ \n", frame_id, img_width, img_height);
+    }
+
+    int i, j;
+    int class_id = -1;
+    for (i = 0; i < nboxes; ++i) {
+        for (j = 0; j < classes; ++j) {
+            int show = strncmp(names[j], "dont_show", 9);
+            if (dets[i].prob[j] > thresh && show)
+            {
+                if (class_id != -1) strcat(send_buf, ", \n");
+                class_id = j;
+                char *buf = (char *)calloc(2048, sizeof(char));
+                if (!buf) return 0;
+                //sprintf(buf, "{\"image_id\":%d, \"category_id\":%d, \"bbox\":[%f, %f, %f, %f], \"score\":%f}",
+                //    image_id, j, dets[i].bbox.x, dets[i].bbox.y, dets[i].bbox.w, dets[i].bbox.h, dets[i].prob[j]);
+
+                sprintf(buf, "  {\"class_id\":%d, \"name\":\"%s\", \"relative_coordinates\":{\"center_x\":%f, \"center_y\":%f, \"width\":%f, \"height\":%f}, \"confidence\":%f}",
+                        j, names[j], dets[i].bbox.x, dets[i].bbox.y, dets[i].bbox.w, dets[i].bbox.h, dets[i].prob[j]);
+
+                int send_buf_len = strlen(send_buf);
+                int buf_len = strlen(buf);
+                int total_len = send_buf_len + buf_len + 100;
+                send_buf = (char *)realloc(send_buf, total_len * sizeof(char));
+                if (!send_buf) {
+                    if (buf) free(buf);
+                    return 0;// exit(-1);
+                }
+                strcat(send_buf, buf);
+                free(buf);
+            }
+        }
+    }
+    strcat(send_buf, "\n ] \n}");
+    return send_buf;
+}
+
 char *detection_to_json(detection *dets, int nboxes, int classes, char **names, long long int frame_id, char *filename)
 {
     const float thresh = 0.005; // function get_network_boxes() has already filtred dets by actual threshold

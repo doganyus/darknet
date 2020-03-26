@@ -931,6 +931,8 @@ LIB_API void free_detections(detection *dets, int n);
 LIB_API void fuse_conv_batchnorm(network net);
 LIB_API void calculate_binary_weights(network net);
 LIB_API char *detection_to_json(detection *dets, int nboxes, int classes, char **names, long long int frame_id, char *filename);
+LIB_API char *detection_to_json_with_image_dim(detection *dets, int nboxes, int classes, char **names, long long int frame_id, char *filename, long img_width, long img_height);
+
 
 LIB_API layer* get_network_layer(network* net, int i);
 //LIB_API detection *get_network_boxes(network *net, int w, int h, float thresh, float hier, int *map, int relative, int *num, int letter);
