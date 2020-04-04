@@ -17,6 +17,7 @@ typedef __compar_fn_t comparison_fn_t;
 #endif
 
 #include "http_stream.h"
+#include <libgen.h>
 
 int check_mistakes = 0;
 
@@ -1517,15 +1518,10 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
     char *json_buf = NULL;
     int json_image_id = 0;
     FILE* json_file = NULL;
-    if (outfile) {
-        json_file = fopen(outfile, "wb");
-        if(!json_file) {
-          error("fopen failed");
-        }
-        char *tmp = "[\n";
-        fwrite(tmp, sizeof(char), strlen(tmp), json_file);
-    }
+
     int j;
+    int stdinput = 0;
+
     float nms = .45;    // 0.4F
     while (1) {
         if (filename) {
@@ -1534,11 +1530,26 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
                 if (input[strlen(input) - 1] == 0x0d) input[strlen(input) - 1] = 0;
         }
         else {
+            stdinput = 1;
             printf("Enter Image Path: ");
             fflush(stdout);
             input = fgets(input, 256, stdin);
             if (!input) break;
             strtok(input, "\n");
+
+            if (outfile) {
+                char outfilename[256];
+                sprintf(outfilename, "%s/%s.json", outfile, basename(input));
+                printf("outfilename:%s", outfilename);
+
+                json_file = fopen(outfilename, "wb");
+                if(!json_file) {
+                    error("fopen failed");
+                }
+                char *tmp = "[\n";
+                fwrite(tmp, sizeof(char), strlen(tmp), json_file);
+            }
+
         }
         //image im;
         //image sized = load_image_resize(input, net.w, net.h, net.c, &im);
@@ -1567,12 +1578,15 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
             if (l.nms_kind == DEFAULT_NMS) do_nms_sort(dets, nboxes, l.classes, nms);
             else diounms_sort(dets, nboxes, l.classes, nms, l.nms_kind, l.beta_nms);
         }
-        draw_detections_v3(im, dets, nboxes, thresh, names, alphabet, l.classes, ext_output);
-        if (!json_file){
+        if (stdinput == 0){
+            draw_detections_v3(im, dets, nboxes, thresh, names, alphabet, l.classes, ext_output);
+        }
+
+        if (!json_file && stdinput == 0){
             save_image(im, "predictions");
         }
 
-        if (!dont_show) {
+        if (!dont_show ) {
             show_image(im, "predictions");
         }
 
@@ -1623,13 +1637,14 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
             destroy_all_windows_cv();
         }
 
-        if (filename) break;
-    }
 
-    if (json_file) {
-        char *tmp = "\n]";
-        fwrite(tmp, sizeof(char), strlen(tmp), json_file);
-        fclose(json_file);
+        if (json_file) {
+            char *tmp = "\n]";
+            fwrite(tmp, sizeof(char), strlen(tmp), json_file);
+            fclose(json_file);
+        }
+
+        if (filename) break;
     }
 
     // free memory
