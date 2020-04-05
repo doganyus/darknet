@@ -1591,10 +1591,6 @@ void test_detector(char *datacfg, char *cfgfile, char *weightfile, char *filenam
         }
 
         if (json_file) {
-            if (json_buf) {
-                char *tmp = ", \n";
-                fwrite(tmp, sizeof(char), strlen(tmp), json_file);
-            }
             ++json_image_id;
             json_buf = detection_to_json_with_image_dim(dets, nboxes, l.classes, names, json_image_id, input, im.w, im.h);
 
